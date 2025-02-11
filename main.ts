@@ -74,7 +74,7 @@ type Ctx = IRequest & AuthCtx;
 
 // TODO: make this endpoint authenticated to prevent spam?
 // Get the latest heads of the given document
-router.get("/xrpc/chat.roomy.v0.space.heads", async ({ query }) => {
+router.get("/xrpc/chat.roomy.v0.space.sync.peers", async ({ query }) => {
   // Get the document ID from the request
   const { docId } = query;
   if (typeof docId != "string" || docId?.length == 0)
@@ -122,19 +122,14 @@ router.all("*", async (ctx) => {
 
 // Get the user's personal keypair
 router.post(
-  "/xrpc/chat.roomy.v0.key",
+  "/xrpc/chat.roomy.v0.space.update",
   withContent,
-  async ({ did, json, query }: Ctx) => {
-    // Get the document ID from the request
-    const { docId } = query;
-    if (typeof docId != "string" || docId?.length == 0)
-      return error(400, "string `docId` query param required.");
-
+  async ({ did, json }: Ctx) => {
     // Parse partial changes from request
-    let changes: PartialChange[] = [];
+    let docs: Record<string, PartialChange[]> = {};
     try {
       const jsonBody = await json();
-      changes = z.array(partialChange).parse(jsonBody);
+      docs = z.record(z.array(partialChange)).parse(jsonBody);
     } catch (_) {
       return error(
         400,
@@ -142,11 +137,12 @@ router.post(
       );
     }
 
-    // Load the head syncer
-    const syncer = await HeadSyncer.init(getSyncerStorage(docId));
-
-    // Ingest the changes from the peer
-    await syncer.ingestChanges(did, changes);
+    for (const [docId, changes] of Object.entries(docs)) {
+      // Load the head syncer
+      const syncer = await HeadSyncer.init(getSyncerStorage(docId));
+      // Ingest the changes from the peer
+      await syncer.ingestChanges(did, changes);
+    }
   }
 );
 

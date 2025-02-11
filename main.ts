@@ -53,8 +53,8 @@ router.get("/.well-known/did.json", ({ url }) => ({
   id: serviceDid,
   service: [
     {
-      id: "#roomy_members",
-      type: "RoomyMembershipServer",
+      id: "#roomy_spaces",
+      type: "RoomySpacesServer",
       serviceEndpoint: (() => {
         const u = new URL(url);
         u.pathname = "/";

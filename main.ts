@@ -143,6 +143,8 @@ router.post(
       // Ingest the changes from the peer
       await syncer.ingestChanges(did, changes);
     }
+
+    return {};
   }
 );
 

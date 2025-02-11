@@ -65,10 +65,10 @@ Deno.test("head syncer syncs", async () => {
     }),
     "p1"
   );
-  let p2 = p1.clone("p2");
-  let p3 = p1.clone("p3");
-  let p4 = p1.clone("p4");
-  let p5 = p1.clone("p5");
+  const p2 = p1.clone("p2");
+  const p3 = p1.clone("p3");
+  const p4 = p1.clone("p4");
+  const p5 = p1.clone("p5");
 
   // Then all peers make their own changes independetly
   p1.change((doc) => doc.messages.push("p1 says hello"));
@@ -130,10 +130,9 @@ Deno.test("head syncer syncs", async () => {
   );
 
   // finally, p4 comes and syncs with p2, p5, and p3
-  p4 = p4.merge(p2).merge(p5).merge(p3);
+  p4.merge(p2).merge(p5).merge(p3);
   p4.syncHeads(syncer);
   assertEquals(["p4"], syncer.calculatePeersToDownloadFrom());
 
   assertEquals(syncer, await HeadSyncer.init(storage));
-  console.log(syncer.pojo())
 });

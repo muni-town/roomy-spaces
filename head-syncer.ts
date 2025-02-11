@@ -1,10 +1,12 @@
 import { Heads } from "@automerge/automerge";
 import { deflateSync, inflateSync } from "node:zlib";
+import { z } from "zod";
 
-export type PartialChange = {
-  hash: string;
-  deps: string[];
-};
+export const partialChange = z.object({
+  hash: z.string(),
+  deps: z.array(z.string()),
+});
+export type PartialChange = z.infer<typeof partialChange>;
 
 function getOrDefault<K, V>(map: Map<K, V>, key: K, def: V): V {
   const existing = map.get(key);
@@ -88,7 +90,7 @@ class ChangeGraph {
   }
 }
 
-export interface Storage {
+export interface SyncerStorage {
   save(data: Uint8Array): Promise<void>;
   load(): Promise<Uint8Array | undefined>;
 }
@@ -105,10 +107,10 @@ export class HeadSyncer {
   headPeers: Map<string, Set<string>>;
 
   /** The storage used to load and save the syncer state. */
-  storage: Storage;
+  storage: SyncerStorage;
 
   private constructor(
-    storage: Storage,
+    storage: SyncerStorage,
     changes: ChangeGraph,
     headPeers: Map<string, Set<string>>
   ) {
@@ -117,7 +119,7 @@ export class HeadSyncer {
     this.headPeers = headPeers;
   }
 
-  static async init(storage: Storage): Promise<HeadSyncer> {
+  static async init(storage: SyncerStorage): Promise<HeadSyncer> {
     const loaded = await storage.load();
     const data: HeadSyncerPojo = loaded
       ? JSON.parse(new TextDecoder().decode(inflateSync(loaded)))
@@ -173,6 +175,8 @@ export class HeadSyncer {
         peers.add(peer);
       }
     }
+
+    // Save syncer to storage
     await this.storage.save(
       deflateSync(new TextEncoder().encode(JSON.stringify(this.pojo())))
     );

@@ -1,4 +1,5 @@
 import { Heads } from "@automerge/automerge";
+import { deflateSync, inflateSync } from "node:zlib";
 
 export type PartialChange = {
   hash: string;
@@ -88,8 +89,8 @@ class ChangeGraph {
 }
 
 export interface Storage {
-  save(data: string): Promise<void>;
-  load(): Promise<string | undefined>;
+  save(data: Uint8Array): Promise<void>;
+  load(): Promise<Uint8Array | undefined>;
 }
 
 type HeadSyncerPojo = {
@@ -118,15 +119,12 @@ export class HeadSyncer {
 
   static async init(storage: Storage): Promise<HeadSyncer> {
     const loaded = await storage.load();
-    const data: HeadSyncerPojo = loaded ? JSON.parse(loaded) : undefined;
+    const data: HeadSyncerPojo = loaded
+      ? JSON.parse(new TextDecoder().decode(inflateSync(loaded)))
+      : undefined;
     const changes = new ChangeGraph(data?.changes);
-    const headPeers = data?.headPeers
-      ? new Map(
-          Object.entries(data.headPeers).map(([k, v]) => [
-            k,
-            v.map((x) => new Set(x)),
-          ])
-        )
+    const headPeers: Map<string, Set<string>> = data?.headPeers
+      ? new Map(Object.entries(data.headPeers).map(([k, v]) => [k, new Set(v)]))
       : new Map();
     return new HeadSyncer(storage, changes, headPeers);
   }
@@ -175,7 +173,9 @@ export class HeadSyncer {
         peers.add(peer);
       }
     }
-    await this.storage.save(JSON.stringify(this.pojo()));
+    await this.storage.save(
+      deflateSync(new TextEncoder().encode(JSON.stringify(this.pojo())))
+    );
   }
 
   /** Find the shortest list of peers that collectively have all of the latest heads. */

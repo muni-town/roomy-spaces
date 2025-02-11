@@ -46,8 +46,8 @@ class Peer<T> {
 }
 
 Deno.test("head syncer syncs", async () => {
-  let data = undefined as undefined | string;
-  const syncer = await HeadSyncer.init({
+  let data = undefined as undefined | Uint8Array;
+  const storage = {
     load() {
       return Promise.resolve(data);
     },
@@ -55,7 +55,8 @@ Deno.test("head syncer syncs", async () => {
       data = d;
       return Promise.resolve();
     },
-  });
+  } satisfies Parameters<typeof HeadSyncer.init>[0];
+  const syncer = await HeadSyncer.init(storage);
 
   // Start with all peers in a common state
   let p1 = new Peer(
@@ -132,4 +133,7 @@ Deno.test("head syncer syncs", async () => {
   p4 = p4.merge(p2).merge(p5).merge(p3);
   p4.syncHeads(syncer);
   assertEquals(["p4"], syncer.calculatePeersToDownloadFrom());
+
+  assertEquals(syncer, await HeadSyncer.init(storage));
+  console.log(syncer.pojo())
 });

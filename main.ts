@@ -30,7 +30,14 @@ const getSyncerStorage = (docId: string): SyncerStorage => ({
     return data.value as Uint8Array;
   },
   async save(data) {
-    await db.set(["roomy-spaces", "head-syncers", docId], data);
+    await db.set(["roomy-spaces", "head-syncers", docId], data, {
+      // Keep cache of heads for 15 days. That means that brand-new users who join the space will
+      // need to join within 15 days of somebody who's already joined the space in order to see
+      // up-to-date info.
+      //
+      // This is a safety mechanism right now so our storage doesn't grow forever.
+      expireIn: 1000 * 60 * 60 * 24 * 15,
+    });
   },
 });
 
